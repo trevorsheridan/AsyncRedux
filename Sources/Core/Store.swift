@@ -9,11 +9,7 @@ import Synchronization
 import AsyncReactiveSequences
 
 @available(iOS 18.0, *)
-public class Store<State>: StoreProtocol where State: AsyncRedux.State {
-    enum StoreAction: Action {
-        case initialize
-    }
-    
+public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, Action: AsyncRedux.Action {
     private typealias ChannelKey = Int
     
     typealias SendableKeyPath = KeyPath<State, Sendable>
@@ -24,18 +20,17 @@ public class Store<State>: StoreProtocol where State: AsyncRedux.State {
         let valueKeyPath: PartialKeyPath<State>
     }
     
-    public nonisolated lazy var state: AsyncReadOnlyCurrentValueSequence<State> = AsyncReadOnlyCurrentValueSequence(from: sequence)
+    public nonisolated lazy var state: AsyncReadOnlyCurrentValueSequence<State> = sequence.readonly()
     
     private let criticalState: Mutex<State>
-    private let reducer: Reducer<State>
+    private let reducer: Reducer<State, Action>
     private let sequence: AsyncCurrentValueSequence<State>
     private var channels = [ChannelKey: Channel]()
     
     // Uses the nonisolated initialization technique found here so initialization can take place in a globally isolated context.
     // https://www.swift.org/migration/documentation/swift-6-concurrency-migration-guide/commonproblems#Non-Isolated-Initialization
-    public init(reducer: @escaping Reducer<State>, state: State? = nil) {
+    public init(reducer: @escaping Reducer<State, Action>, state: State) {
         self.reducer = reducer
-        let state = state ?? reducer(StoreAction.initialize, nil)
         self.criticalState = .init(state)
         self.sequence = .init(state)
     }
@@ -120,7 +115,8 @@ public class Store<State>: StoreProtocol where State: AsyncRedux.State {
     @discardableResult
     private nonisolated func perform(action: Action) -> (next: State, previous: State?) {
         criticalState.withLock { previous in
-            let next = reducer(action, previous)
+            var next = previous
+            reducer(action, &next)
             defer { previous = next }
             return (next: next, previous: previous)
         }

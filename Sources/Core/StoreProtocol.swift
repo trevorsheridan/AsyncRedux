@@ -10,6 +10,7 @@ import AsyncReactiveSequences
 @available(iOS 18.0, *)
 public protocol StoreProtocol {
     associatedtype State: AsyncRedux.State & Sendable
+    associatedtype Action: AsyncRedux.Action
     nonisolated var state: AsyncReadOnlyCurrentValueSequence<State> { get }
     func sequence<Value: Hashable & Sendable>(for keyPath: KeyPath<State, Value>) -> AnyAsyncSequence<Value>
     func sequence<Value: Hashable & Sendable>(for keyPath: KeyPath<State, Value?>) -> AnyAsyncSequence<Value?>

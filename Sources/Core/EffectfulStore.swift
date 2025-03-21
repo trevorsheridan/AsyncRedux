@@ -10,19 +10,20 @@ import Semaphore
 import AsyncReactiveSequences
 
 @available(iOS 18.0, *)
-public class EffectfulStore<State>: StoreProtocol where State: AsyncRedux.State & Sendable {
-    public typealias Effect = (_ action: any Action, _ state: State, _ previous: State) async throws -> Result?
+public class EffectfulStore<State, Action>: StoreProtocol where State: AsyncRedux.State & Sendable, Action: AsyncRedux.Action {
+    public typealias Effect = (_ action: Action, _ state: State, _ previous: State) async throws -> Result
     
     public enum Result: Sendable {
-        case success(any Action)
-        case failure(any Swift.Error, (any Action)?)
+        case `continue`(Action)
+        case fail(any Swift.Error, (Action)?)
+        case stop
     }
     
     enum Error: Swift.Error {
         case unexpectedError
     }
     
-    private let store: Store<State>
+    private let store: Store<State, Action>
     private let effect: Effect
     private let semaphore = AsyncSemaphore(value: 1)
     
@@ -30,13 +31,13 @@ public class EffectfulStore<State>: StoreProtocol where State: AsyncRedux.State 
         store.state
     }
     
-    public init(wrapping store: Store<State>, effect: @escaping Effect) {
+    public init(wrapping store: Store<State, Action>, effect: @escaping Effect) {
         self.store = store
         self.effect = effect
     }
     
     @discardableResult
-    public func dispatch(isolation: isolated (any Actor)? = #isolation, action: any Action) async throws -> State {
+    public func dispatch(isolation: isolated (any Actor)? = #isolation, action: Action) async throws -> State {
         // Ensure only one task can execute the entire body of this function from top to bottom at a time.
         await semaphore.wait()
         defer { semaphore.signal() }
@@ -53,19 +54,26 @@ public class EffectfulStore<State>: StoreProtocol where State: AsyncRedux.State 
                 throw error
             }
             
-            guard state != previous, let result = try await effect(action, state, previous) else {
+            guard state != previous else {
                 // There is no further action to take, return the state that was passed into the effect.
                 return state
             }
             
+            let result = try await effect(action, state, previous)
+            
             switch result {
-            case .success(let a):
+            case .continue(let a):
                 action = a
-            case .failure(let e, let a):
+            case .fail(let e, let a):
                 if let a {
                     action = a
+                    error = e
+                } else {
+                    throw e
                 }
-                error = e
+            case .stop:
+                // There is no further action to take, return the state that was passed into the effect.
+                return state
             }
             
             previous = state
