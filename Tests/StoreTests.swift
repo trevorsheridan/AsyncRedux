@@ -7,18 +7,14 @@ import AsyncAlgorithms
 
 @MainActor
 final class StoreTests: Sendable {
-    let store = Store<State> { action, state in
-        var state = state ?? .defaultState
-        
+    let store = Store<State, Action>(reducer: { action, state in
         switch action {
         case Action.incrementAge(let age):
             state.user?.age = age
         default:
             break
         }
-        
-        return state
-    }
+    }, state: .defaultState)
     
     let ages = Mutex<[Int]>([])
     
