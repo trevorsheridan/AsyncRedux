@@ -42,17 +42,12 @@ public class EffectfulStore<State, Action>: StoreProtocol where State: AsyncRedu
         await semaphore.wait()
         defer { semaphore.signal() }
         
-        var previous = store.state.value
         var action = action
-        var error: Swift.Error?
+        var previous = store.state.value
         
         while true {
             // Dispatch a state change to the store.
             let state = await store.dispatch(action: action)
-            
-            if let error {
-                throw error
-            }
             
             guard state != previous else {
                 // There is no further action to take, return the state that was passed into the effect.
@@ -62,21 +57,21 @@ public class EffectfulStore<State, Action>: StoreProtocol where State: AsyncRedu
             let result = try await effect(action, state, previous)
             
             switch result {
-            case .continue(let a):
-                action = a
-            case .fail(let e, let a):
-                if let a {
-                    action = a
-                    error = e
-                } else {
-                    throw e
+            case .continue(let nextAction):
+                // The effect indicated that processing should continue: dispatch another action to the store and run another effect.
+                action = nextAction
+                previous = state
+            case .fail(let error, let action):
+                if let action {
+                    // The effect provided a final action to dispatch so the store can perform any last state changes.
+                    await store.dispatch(action: action)
                 }
+                
+                throw error
             case .stop:
-                // There is no further action to take, return the state that was passed into the effect.
+                // The effect indicated there's no further action to take, return the current state.
                 return state
             }
-            
-            previous = state
         }
     }
     
