@@ -23,13 +23,13 @@ public class EffectfulStore<State, Action>: StoreProtocol where State: AsyncRedu
         case unexpectedError
     }
     
+    public var state: AsyncReadOnlyCurrentValueSequence<State> {
+        store.state
+    }
+    
     private let store: Store<State, Action>
     private let effect: Effect
     private let semaphore = AsyncSemaphore(value: 1)
-    
-    public nonisolated var state: AsyncReadOnlyCurrentValueSequence<State> {
-        store.state
-    }
     
     public init(wrapping store: Store<State, Action>, effect: @escaping Effect) {
         self.store = store
