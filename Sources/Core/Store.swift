@@ -20,7 +20,7 @@ public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, 
         let valueKeyPath: PartialKeyPath<State>
     }
     
-    public nonisolated lazy var state: AsyncReadOnlyCurrentValueSequence<State> = sequence.readonly()
+    public private(set) lazy var state: AsyncReadOnlyCurrentValueSequence<State> = sequence.readonly()
     
     private let criticalState: Mutex<State>
     private let reducer: Reducer<State, Action>
@@ -141,7 +141,7 @@ extension Store.Channel {
         private let base: AsyncCurrentValueSequence<UnsafeValueBox?>
         
         init<Value: Sendable>(_ value: Value) {
-            self.base = .init(.init(value: value))
+            base = .init(.init(value: value))
         }
         
         func send(value: Any) {
