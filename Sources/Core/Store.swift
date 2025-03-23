@@ -35,6 +35,14 @@ public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, 
         self.sequence = .init(state)
     }
     
+    convenience init(reducing reducer: @escaping @Sendable (_ action: Action, _ state: inout State) -> Void, state: State) {
+        self.init(reducer: { action, state in
+            var state = state
+            reducer(action, &state)
+            return state
+        }, state: state)
+    }
+    
     // MARK: - AsyncSequence
     
     public func sequence<Value: Hashable & Sendable>(for keyPath: KeyPath<State, Value>) -> AnyAsyncSequence<Value> {
@@ -115,8 +123,7 @@ public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, 
     @discardableResult
     private nonisolated func perform(action: Action) -> (next: State, previous: State?) {
         criticalState.withLock { previous in
-            var next = previous
-            reducer(action, &next)
+            let next = reducer(action, previous)
             defer { previous = next }
             return (next: next, previous: previous)
         }
