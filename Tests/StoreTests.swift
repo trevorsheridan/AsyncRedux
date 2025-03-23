@@ -7,7 +7,7 @@ import AsyncAlgorithms
 
 @MainActor
 final class StoreTests: Sendable {
-    let store = Store<State, Action>(reducer: { action, state in
+    let store = Store<State, Action>(reducing: { action, state in
         switch action {
         case Action.incrementAge(let age):
             state.user?.age = age

@@ -33,7 +33,7 @@ final class EffectfulStoreTests {
     private lazy var store = defaultStore()
     
     private func defaultStore() -> EffectfulStore<State, Action> {
-        withEffect(.init(reducer: { action, state in
+        withEffect(.init(reducing: { action, state in
             switch action {
             case .start:
                 state = .running
@@ -73,7 +73,7 @@ final class EffectfulStoreTests {
     
     @Test("Effect explicitly fails and returns one final action for the reducer to run.", .timeLimit(.minutes(1)))
     func explicitFail() async throws {
-        let store: EffectfulStore<State, Action> = withEffect(.init(reducer: { action, state in
+        let store: EffectfulStore<State, Action> = withEffect(.init(reducing: { action, state in
             switch action {
             case .start:
                 state = .running
@@ -95,7 +95,7 @@ final class EffectfulStoreTests {
     
     @Test("Effect calls an internal function that throws an error and returns the current state.", .timeLimit(.minutes(1)))
     func implicitFail() async throws {
-        let store: EffectfulStore<State, Action> = withEffect(.init(reducer: { action, state in
+        let store: EffectfulStore<State, Action> = withEffect(.init(reducing: { action, state in
             switch action {
             case .start:
                 state = .running
