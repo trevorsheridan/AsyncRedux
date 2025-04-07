@@ -56,7 +56,7 @@ final class StoreTests: Sendable {
         
         let state = await store.dispatch(action: Action.incrementAge(newAge))
         
-        #expect(try await state.user?.age == newAge)
+        #expect(state.user?.age == newAge)
         #expect(try await age.value == newAge)
     }
     
@@ -74,7 +74,7 @@ final class StoreTests: Sendable {
         }
         
         #expect(try await addressTask.value?.city == "Cupertino")
-        #expect(try await state.value.user?.age == 36)
+        #expect(await state.value.user?.age == 36)
     }
     
     @Test("Key path sequence immediately sends initial value.", .timeLimit(.minutes(1)))
