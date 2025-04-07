@@ -11,7 +11,7 @@ import AsyncReactiveSequences
 public protocol StoreProtocol {
     associatedtype State: AsyncRedux.State & Sendable
     associatedtype Action: AsyncRedux.Action
-    nonisolated var state: AsyncReadOnlyCurrentValueSequence<State> { get }
+    var state: AsyncReadOnlyCurrentValueSequence<State> { get }
     func sequence<Value: Hashable & Sendable>(for keyPath: KeyPath<State, Value>) -> AnyAsyncSequence<Value>
     func sequence<Value: Hashable & Sendable>(for keyPath: KeyPath<State, Value?>) -> AnyAsyncSequence<Value?>
     func sequence<Value: Hashable & Sendable, Reactor: Hashable & Sendable>(for keyPath: KeyPath<State, Value>, reactingTo reactionKeyPath: KeyPath<State, Reactor>) -> AnyAsyncSequence<Value>

@@ -20,7 +20,7 @@ public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, 
         let valueKeyPath: PartialKeyPath<State>
     }
     
-    public private(set) lazy var state: AsyncReadOnlyCurrentValueSequence<State> = sequence.readonly()
+    public let state: AsyncReadOnlyCurrentValueSequence<State>
     
     private let criticalState: Mutex<State>
     private let reducer: Reducer<State, Action>
@@ -33,6 +33,7 @@ public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, 
         self.reducer = reducer
         self.criticalState = .init(state)
         self.sequence = .init(state)
+        self.state = sequence.readonly()
     }
     
     public convenience init(reducing reducer: @escaping @Sendable (_ action: Action, _ state: inout State) -> Void, state: State) {
