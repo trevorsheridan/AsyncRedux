@@ -1,15 +1,16 @@
 //
-//  Store.swift
+//  Store 2.swift
 //  AsyncRedux
 //
-//  Created by Trevor Sheridan on 8/27/24.
+//  Created by Trevor Sheridan on 7/17/25.
 //
 
 import Synchronization
 import AsyncReactiveSequences
 
 @available(iOS 18.0, *)
-public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, Action: AsyncRedux.Action {
+@MainActor
+public class MainActorStore<State, Action> where State: AsyncRedux.State, Action: AsyncRedux.Action {
     private typealias ChannelKey = Int
     
     typealias SendableKeyPath = KeyPath<State, Sendable>
@@ -22,21 +23,21 @@ public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, 
     
     public let state: AsyncReadOnlyCurrentValueSequence<State>
     
-    private let criticalState: Mutex<State>
+    private var criticalState: State
     private let reducer: Reducer<State, Action>
     private let sequence: AsyncCurrentValueSequence<State>
     private var channels = [ChannelKey: Channel]()
     
     // Uses the nonisolated initialization technique found here so initialization can take place in a globally isolated context.
     // https://www.swift.org/migration/documentation/swift-6-concurrency-migration-guide/commonproblems#Non-Isolated-Initialization
-    public init(@_inheritActorContext reducer: @escaping @Sendable Reducer<State, Action>, state: State) {
+    public init(reducer: @escaping Reducer<State, Action>, state: State) {
         self.reducer = reducer
-        self.criticalState = .init(state)
+        self.criticalState = state
         self.sequence = .init(state)
         self.state = sequence.readonly()
     }
     
-    public convenience init(@_inheritActorContext reducing reducer: @escaping @Sendable (_ action: Action, _ state: inout State) -> Void, state: State) {
+    public convenience init(reducing reducer: @escaping @MainActor (_ action: Action, _ state: inout State) -> Void, state: State) {
         self.init(reducer: { action, state in
             var state = state
             reducer(action, &state)
@@ -87,7 +88,7 @@ public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, 
     // MARK: - Dispatch
     
     @discardableResult
-    public func dispatch(isolation: isolated (any Actor)? = #isolation, action: Action) async -> State {
+    public func dispatch(action: Action) -> State {
         let (state, original) = perform(action: action)
         
         if state != original {
@@ -122,12 +123,10 @@ public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, 
     }
     
     @discardableResult
-    private nonisolated func perform(action: Action) -> (next: State, previous: State?) {
-        criticalState.withLock { previous in
-            let next = reducer(action, previous)
-            defer { previous = next }
-            return (next: next, previous: previous)
-        }
+    private func perform(action: Action) -> (next: State, previous: State?) {
+        let next = reducer(action, criticalState)
+        defer { criticalState = next }
+        return (next: next, previous: criticalState)
     }
     
     // MARK: - Channels
@@ -140,7 +139,7 @@ public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, 
     }
 }
 
-extension Store.Channel {
+extension MainActorStore.Channel {
     struct SequenceContainer {
         struct UnsafeValueBox: @unchecked Sendable {
             nonisolated(unsafe) var value: Any
