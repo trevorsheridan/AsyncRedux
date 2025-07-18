@@ -7,12 +7,20 @@ import AsyncAlgorithms
 
 @MainActor
 final class StoreTests: Sendable {
-    let store = Store<State, Action>(reducing: { action, state in
-        switch action {
-        case Action.incrementAge(let age):
-            state.user?.age = age
-        }
-    }, state: .defaultState)
+    var store: Store<State, Action>!
+    
+    init() {
+        store = Store<State, Action>(reducing: { [weak self] action, state in
+            guard let self else {
+                return
+            }
+            
+            switch action {
+            case Action.incrementAge(let age):
+                state.user?.age = verifyAge(age: age)
+            }
+        }, state: .defaultState)
+    }
     
     @Test("Update state when dispatch performs an action and causes reducer to run", .timeLimit(.minutes(1)))
     func updatesState() async throws {
@@ -81,5 +89,12 @@ final class StoreTests: Sendable {
     func keyPathSequenceImmediatelySendsFirstValue() async throws {
         let value = try await store.sequence(for: \.user?.age).first { @Sendable _ in true }
         #expect(value == 35)
+    }
+    
+    // MARK: - Helpers
+    
+    // A simple function to ensure the reducer can access methods in the actor context that it was defined in.
+    private func verifyAge(age: Int?) -> Int {
+        age ?? 1
     }
 }
