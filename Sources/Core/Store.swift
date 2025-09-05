@@ -36,7 +36,7 @@ public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, 
         self.state = sequence.readonly()
     }
     
-    public convenience init(reducing reducer: @escaping @Sendable (_ action: Action, _ state: inout State) -> Void, state: State) {
+    public convenience init(reducing reducer: @escaping (_ action: Action, _ state: inout State) -> Void, state: State) {
         self.init(reducer: { action, state in
             var state = state
             reducer(action, &state)
