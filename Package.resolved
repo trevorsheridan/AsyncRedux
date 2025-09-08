@@ -1,13 +1,13 @@
 {
-  "originHash" : "e4d9f0a457d188cea3b67131913de32993b287b8b48fbd03a03da7497cde9a45",
+  "originHash" : "c9a224ab5389dfdf560730e2d81fd65673e8419f1bd9bb8e90e3f5ca35be6131",
   "pins" : [
     {
       "identity" : "asyncreactivesequences",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/trevorsheridan/AsyncReactiveSequences.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "cb6c8834d74b93927c6775088e7a5937dc5095e9"
+        "revision" : "314e3a3ccfd058e82e8cb1a951fd8c0454234d6f",
+        "version" : "0.1.0"
       }
     },
     {
