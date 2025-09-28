@@ -1,5 +1,5 @@
 //
-//  EffectfulStoreTests.swift
+//  AsyncEffectfulStoreTests.swift
 //  AsyncRedux
 //
 //  Created by Trevor Sheridan on 9/10/24.
@@ -12,7 +12,7 @@ import AsyncReactiveSequences
 @testable import AsyncRedux
 
 @MainActor
-final class EffectfulStoreTests {
+final class AsyncEffectfulStoreTests {
     enum Error: Swift.Error {
         case standardError
     }
@@ -32,8 +32,8 @@ final class EffectfulStoreTests {
     
     private lazy var store = defaultStore()
     
-    private func defaultStore() -> EffectfulStore<State, Action> {
-        withEffect(.init(reducing: { action, state in
+    private func defaultStore() -> AsyncEffectfulStore<State, Action> {
+        withAsyncEffect(.init(reducing: { action, state in
             switch action {
             case .start:
                 state = .running
@@ -73,7 +73,7 @@ final class EffectfulStoreTests {
     
     @Test("Effect explicitly fails and returns one final action for the reducer to run.", .timeLimit(.minutes(1)))
     func explicitFail() async throws {
-        let store: EffectfulStore<State, Action> = withEffect(.init(reducing: { action, state in
+        let store: AsyncEffectfulStore<State, Action> = withAsyncEffect(.init(reducing: { action, state in
             switch action {
             case .start:
                 state = .running
@@ -95,7 +95,7 @@ final class EffectfulStoreTests {
     
     @Test("Effect calls an internal function that throws an error and returns the current state.", .timeLimit(.minutes(1)))
     func implicitFail() async throws {
-        let store: EffectfulStore<State, Action> = withEffect(.init(reducing: { action, state in
+        let store: AsyncEffectfulStore<State, Action> = withAsyncEffect(.init(reducing: { action, state in
             switch action {
             case .start:
                 state = .running

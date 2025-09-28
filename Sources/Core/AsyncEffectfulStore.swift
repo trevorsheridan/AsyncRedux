@@ -1,5 +1,5 @@
 //
-//  EffectfulStore.swift
+//  AsyncEffectfulStore.swift
 //  AsyncRedux
 //
 //  Created by Trevor Sheridan on 9/9/24.
@@ -10,8 +10,8 @@ import Semaphore
 import AsyncReactiveSequences
 
 @available(iOS 18.0, *)
-public class EffectfulStore<State, Action>: StoreProtocol where State: AsyncRedux.State & Sendable, Action: AsyncRedux.Action {
-    public typealias Effect = (_ action: Action, _ state: State, _ previous: State) throws -> Result
+public class AsyncEffectfulStore<State, Action>: StoreProtocol where State: AsyncRedux.State & Sendable, Action: AsyncRedux.Action {
+    public typealias Effect = (_ action: Action, _ state: State, _ previous: State) async throws -> Result
     
     public enum Result: Sendable {
         case `continue`(Action)
@@ -29,6 +29,7 @@ public class EffectfulStore<State, Action>: StoreProtocol where State: AsyncRedu
     
     private let store: Store<State, Action>
     private let effect: Effect
+    private let semaphore = AsyncSemaphore(value: 1)
     
     public init(wrapping store: Store<State, Action>, effect: @escaping Effect) {
         self.store = store
@@ -36,7 +37,11 @@ public class EffectfulStore<State, Action>: StoreProtocol where State: AsyncRedu
     }
     
     @discardableResult
-    public func dispatch(action: Action) throws -> State {
+    public func dispatch(isolation: isolated (any Actor)? = #isolation, action: Action) async throws -> State {
+        // Ensure only one task can execute the entire body of this function from top to bottom at a time.
+        await semaphore.wait()
+        defer { semaphore.signal() }
+        
         var action = action
         var previous = store.state.value
         
@@ -49,7 +54,7 @@ public class EffectfulStore<State, Action>: StoreProtocol where State: AsyncRedu
                 return state
             }
             
-            let result = try effect(action, state, previous)
+            let result = try await effect(action, state, previous)
             
             switch result {
             case .continue(let nextAction):

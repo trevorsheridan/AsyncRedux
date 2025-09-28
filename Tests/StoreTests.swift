@@ -24,7 +24,7 @@ final class StoreTests: Sendable {
     
     @Test("Update state when dispatch performs an action and causes reducer to run", .timeLimit(.minutes(1)))
     func updatesState() async throws {
-        let state = await store.dispatch(action: Action.incrementAge(36))
+        let state = store.dispatch(action: Action.incrementAge(36))
         #expect(state.user?.age == 36)
     }
     
@@ -40,10 +40,10 @@ final class StoreTests: Sendable {
         
         // Wrapping the following dispatches in a task ensures `agesTask` above runs first and gets a subscriber reigstered to the store's state.
         Task {
-            await store.dispatch(action: Action.incrementAge(36))
+            store.dispatch(action: Action.incrementAge(36))
             // Intentionally repeat the number from above to ensure it doesn't end up being repeated by the store.
-            await store.dispatch(action: Action.incrementAge(36))
-            await store.dispatch(action: Action.incrementAge(37))
+            store.dispatch(action: Action.incrementAge(36))
+            store.dispatch(action: Action.incrementAge(37))
         }
         
         #expect(try await agesTask.value == expectedAges)
@@ -62,7 +62,7 @@ final class StoreTests: Sendable {
                 }
         }
         
-        let state = await store.dispatch(action: Action.incrementAge(newAge))
+        let state = store.dispatch(action: Action.incrementAge(newAge))
         
         #expect(state.user?.age == newAge)
         #expect(try await age.value == newAge)
@@ -78,7 +78,7 @@ final class StoreTests: Sendable {
         
         // Wrapping the dispatch in a task ensures `addressTask` above runs first and gets a subscriber reigstered to the store's state.
         let state = Task {
-            await store.dispatch(action: Action.incrementAge(36))
+            store.dispatch(action: Action.incrementAge(36))
         }
         
         #expect(try await addressTask.value?.city == "Cupertino")
