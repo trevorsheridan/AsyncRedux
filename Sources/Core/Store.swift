@@ -87,7 +87,7 @@ public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, 
     // MARK: - Dispatch
     
     @discardableResult
-    public func dispatch(isolation: isolated (any Actor)? = #isolation, action: Action) async -> State {
+    public func dispatch(action: Action) -> State {
         let (state, original) = perform(action: action)
         
         if state != original {
