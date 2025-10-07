@@ -1,5 +1,5 @@
 //
-//  AsyncEffectfulStore 2.swift
+//  AsyncPersistentStore.swift
 //  AsyncRedux
 //
 //  Created by Trevor Sheridan on 10/6/25.
