@@ -1,39 +1,36 @@
 //
-//  AsyncEffectfulStore.swift
+//  AsyncEffectfulStore 2.swift
 //  AsyncRedux
 //
-//  Created by Trevor Sheridan on 9/9/24.
+//  Created by Trevor Sheridan on 10/6/25.
 //
 
 import Synchronization
 import Semaphore
 import AsyncReactiveSequences
+import AsyncSimpleStore
 
 @available(iOS 18.0, *)
-public class AsyncEffectfulStore<State, Action>: AsyncDispatchableStoreProtocol where State: AsyncRedux.State & Sendable, Action: AsyncRedux.Action {
-    public typealias Effect = (_ action: Action, _ state: State, _ previous: State) async throws -> Result
-    
-    public enum Result: Sendable {
-        case `continue`(Action)
-        case fail(any Swift.Error, (Action)?)
-        case stop
-    }
-    
+public class AsyncPersistentStore<State, Action, Provider>: AsyncDispatchableStoreProtocol
+where State: AsyncRedux.State & Codable & Sendable, Action: AsyncRedux.Action, Provider: StorageProviding, Provider.Value == State {
     enum Error: Swift.Error {
-        case unexpectedError
+        case unrecognizedInternalDispatch
     }
     
     public var state: AsyncReadOnlyCurrentValueSequence<State> {
         store.state
     }
     
-    private let store: Store<State, Action>
-    private let effect: Effect
+    private let store: any StoreProtocol<State, Action>
+    private let persistentStore: SimpleStore<State, Provider>
+    private let transform: (@Sendable (_ state: State) -> State)?
     private let semaphore = AsyncSemaphore(value: 1)
+    private var cancellables = Set<TaskCancellable>()
     
-    public init(wrapping store: Store<State, Action>, effect: @escaping Effect) {
+    public init(wrapping store: any StoreProtocol<State, Action>, persistentStore: SimpleStore<State, Provider>, transform:  (@Sendable (_ state: State) -> State)? = nil) {
         self.store = store
-        self.effect = effect
+        self.persistentStore = persistentStore
+        self.transform = transform
     }
     
     @discardableResult
@@ -41,38 +38,25 @@ public class AsyncEffectfulStore<State, Action>: AsyncDispatchableStoreProtocol 
         // Ensure only one task can execute the entire body of this function from top to bottom at a time.
         await semaphore.wait()
         defer { semaphore.signal() }
+  
+        var state: State
         
-        var action = action
-        var previous = store.state.value
-        
-        while true {
-            // Dispatch a state change to the store.
-            let state = store.dispatch(action: action)
-            
-            guard state != previous else {
-                // There is no further action to take, return the state that was passed into the effect.
-                return state
-            }
-            
-            let result = try await effect(action, state, previous)
-            
-            switch result {
-            case .continue(let nextAction):
-                // The effect indicated that processing should continue: dispatch another action to the store and run another effect.
-                action = nextAction
-                previous = state
-            case .fail(let error, let action):
-                if let action {
-                    // The effect provided a final action to dispatch so the store can perform any last state changes.
-                    store.dispatch(action: action)
-                }
-                
-                throw error
-            case .stop:
-                // The effect indicated there's no further action to take, return the current state.
-                return state
-            }
+        switch store {
+        case let store as any AsyncDispatchableStoreProtocol<State, Action>:
+            state = try await store.dispatch(isolation: isolation, action: action)
+        case let store as any DispatchableStoreProtocol<State, Action>:
+            state = try store.dispatch(action: action)
+        default:
+            throw Error.unrecognizedInternalDispatch
         }
+        
+        if let transform {
+            state = transform(state)
+        }
+        
+        try persistentStore.write(value: state)
+        
+        return state
     }
     
     public func sequence<Value>(for keyPath: KeyPath<State, Value>) -> AnyAsyncSequence<Value> where Value : Hashable, Value : Sendable {
