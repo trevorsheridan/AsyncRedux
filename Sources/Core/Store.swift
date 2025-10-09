@@ -9,7 +9,7 @@ import Synchronization
 import AsyncReactiveSequences
 
 @available(iOS 18.0, *)
-public class Store<State, Action>: StoreProtocol where State: AsyncRedux.State, Action: AsyncRedux.Action {
+public class Store<State, Action>: DispatchableStoreProtocol where State: AsyncRedux.State, Action: AsyncRedux.Action {
     private typealias ChannelKey = Int
     
     typealias SendableKeyPath = KeyPath<State, Sendable>

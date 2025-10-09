@@ -15,7 +15,8 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/apple/swift-async-algorithms.git", from: "1.0.1"),
         .package(url: "https://github.com/groue/Semaphore.git", from: "0.1.0"),
-        .package(url: "https://github.com/trevorsheridan/AsyncReactiveSequences.git", .upToNextMajor(from: "0.1.0"))
+        .package(url: "https://github.com/trevorsheridan/AsyncReactiveSequences.git", .upToNextMajor(from: "0.1.0")),
+        .package(url: "https://github.com/trevorsheridan/AsyncSimpleStore.git", .upToNextMajor(from: "0.1.2"))
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -25,6 +26,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Semaphore", package: "Semaphore"),
                 .product(name: "AsyncReactiveSequences", package: "AsyncReactiveSequences"),
+                .product(name: "AsyncSimpleStore", package: "AsyncSimpleStore"),
             ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")

@@ -8,7 +8,7 @@
 import AsyncReactiveSequences
 
 @available(iOS 18.0, *)
-public protocol StoreProtocol {
+public protocol StoreProtocol<State, Action> {
     associatedtype State: AsyncRedux.State & Sendable
     associatedtype Action: AsyncRedux.Action
     var state: AsyncReadOnlyCurrentValueSequence<State> { get }

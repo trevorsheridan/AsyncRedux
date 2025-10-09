@@ -10,7 +10,7 @@ import Semaphore
 import AsyncReactiveSequences
 
 @available(iOS 18.0, *)
-public class EffectfulStore<State, Action>: StoreProtocol where State: AsyncRedux.State & Sendable, Action: AsyncRedux.Action {
+public class EffectfulStore<State, Action>: DispatchableStoreProtocol where State: AsyncRedux.State & Sendable, Action: AsyncRedux.Action {
     public typealias Effect = (_ action: Action, _ state: State, _ previous: State) throws -> Result
     
     public enum Result: Sendable {

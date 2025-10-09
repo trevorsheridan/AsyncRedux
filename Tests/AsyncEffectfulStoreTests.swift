@@ -30,9 +30,9 @@ final class AsyncEffectfulStoreTests {
         case cleanup
     }
     
-    private lazy var store = defaultStore()
+    private lazy var store = createStore()
     
-    private func defaultStore() -> AsyncEffectfulStore<State, Action> {
+    private func createStore() -> AsyncEffectfulStore<State, Action> {
         withAsyncEffect(.init(reducing: { action, state in
             switch action {
             case .start:
