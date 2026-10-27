@@ -39,24 +39,37 @@ where State: AsyncRedux.State & Codable & Sendable, Action: AsyncRedux.Action, P
         await semaphore.wait()
         defer { semaphore.signal() }
   
-        var state: State
+        let state: State
         
+        do {
+            state = try await dispatchWrappedStore(isolation: isolation, action: action)
+        } catch {
+            // A failed effect can still have changed the state, through its final action or the steps before it.
+            // The effect's error is the one the caller needs, so a failed write doesn't replace it.
+            try? write(state: store.state.value)
+            
+            throw error
+        }
+        
+        try write(state: state)
+        
+        // The transform shapes what's written for a relaunch; the caller gets the state as it stands.
+        return state
+    }
+    
+    private func dispatchWrappedStore(isolation: isolated (any Actor)?, action: Action) async throws -> State {
         switch store {
         case let store as any AsyncDispatchableStoreProtocol<State, Action>:
-            state = try await store.dispatch(isolation: isolation, action: action)
+            try await store.dispatch(isolation: isolation, action: action)
         case let store as any DispatchableStoreProtocol<State, Action>:
-            state = try store.dispatch(action: action)
+            try store.dispatch(action: action)
         default:
             throw Error.unrecognizedInternalDispatch
         }
-        
-        if let transform {
-            state = transform(state)
-        }
-        
-        try persistentStore.write(value: state)
-        
-        return state
+    }
+    
+    private func write(state: State) throws {
+        try persistentStore.write(value: transform?(state) ?? state)
     }
     
     public func sequence<Value>(for keyPath: KeyPath<State, Value>) -> AnyAsyncSequence<Value> where Value : Hashable, Value : Sendable {
