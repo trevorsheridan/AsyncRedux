@@ -39,24 +39,21 @@ where State: AsyncRedux.State & Codable & Sendable, Action: AsyncRedux.Action, P
         await semaphore.wait()
         defer { semaphore.signal() }
   
-        var state: State
+        // Written even when the dispatch throws, since a failed effect can still have changed the state.
+        // Best effort: a write that fails is caught up by the next dispatch, which writes the whole state.
+        defer {
+            let state = store.state.value
+            try? persistentStore.write(value: transform?(state) ?? state)
+        }
         
         switch store {
         case let store as any AsyncDispatchableStoreProtocol<State, Action>:
-            state = try await store.dispatch(isolation: isolation, action: action)
+            return try await store.dispatch(isolation: isolation, action: action)
         case let store as any DispatchableStoreProtocol<State, Action>:
-            state = try store.dispatch(action: action)
+            return try store.dispatch(action: action)
         default:
             throw Error.unrecognizedInternalDispatch
         }
-        
-        if let transform {
-            state = transform(state)
-        }
-        
-        try persistentStore.write(value: state)
-        
-        return state
     }
     
     public func sequence<Value>(for keyPath: KeyPath<State, Value>) -> AnyAsyncSequence<Value> where Value : Hashable, Value : Sendable {
