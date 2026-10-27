@@ -127,4 +127,32 @@ final class AsyncPersistentStoreTests {
         #expect(store.state.value == .failed)
         #expect(persistentStore.value == .failed)
     }
+
+    @Test("Test a failed write doesn't fail the dispatch", .timeLimit(.minutes(1)))
+    func failedWrite() async throws {
+        let store: AsyncPersistentStore<State, Action, FailingSimpleStoreProvider> = withAsyncPersistentStore(Store(reducing: { action, state in
+            switch action {
+            case .start:
+                state = .running
+            case .finishLongRunningTask:
+                state = .finished
+            case .cleanup:
+                state = .failed
+            }
+        }, state: .initializing), persistentStore: SimpleStore(provider: FailingSimpleStoreProvider()))
+
+        #expect(try await store.dispatch(action: .start) == .running)
+    }
+}
+
+private final class FailingSimpleStoreProvider: BasicStorageProviding {
+    func read() -> AsyncPersistentStoreTests.State? {
+        nil
+    }
+
+    func write(value: AsyncPersistentStoreTests.State) throws {
+        throw AsyncPersistentStoreTests.Error.standardError
+    }
+
+    func destroy() {}
 }

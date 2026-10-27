@@ -39,37 +39,21 @@ where State: AsyncRedux.State & Codable & Sendable, Action: AsyncRedux.Action, P
         await semaphore.wait()
         defer { semaphore.signal() }
   
-        let state: State
-        
-        do {
-            state = try await dispatchWrappedStore(isolation: isolation, action: action)
-        } catch {
-            // A failed effect can still have changed the state, through its final action or the steps before it.
-            // The effect's error is the one the caller needs, so a failed write doesn't replace it.
-            try? write(state: store.state.value)
-            
-            throw error
+        // Written even when the dispatch throws, since a failed effect can still have changed the state.
+        // Best effort: a write that fails is caught up by the next dispatch, which writes the whole state.
+        defer {
+            let state = store.state.value
+            try? persistentStore.write(value: transform?(state) ?? state)
         }
         
-        try write(state: state)
-        
-        // The transform shapes what's written for a relaunch; the caller gets the state as it stands.
-        return state
-    }
-    
-    private func dispatchWrappedStore(isolation: isolated (any Actor)?, action: Action) async throws -> State {
         switch store {
         case let store as any AsyncDispatchableStoreProtocol<State, Action>:
-            try await store.dispatch(isolation: isolation, action: action)
+            return try await store.dispatch(isolation: isolation, action: action)
         case let store as any DispatchableStoreProtocol<State, Action>:
-            try store.dispatch(action: action)
+            return try store.dispatch(action: action)
         default:
             throw Error.unrecognizedInternalDispatch
         }
-    }
-    
-    private func write(state: State) throws {
-        try persistentStore.write(value: transform?(state) ?? state)
     }
     
     public func sequence<Value>(for keyPath: KeyPath<State, Value>) -> AnyAsyncSequence<Value> where Value : Hashable, Value : Sendable {
